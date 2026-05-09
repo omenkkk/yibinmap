@@ -1,635 +1,443 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <meta charset="utf-8">
-    <title>市区免费配送点位</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>高德地图 - 宜宾市指定区域范围</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
-        body {
-            font-family: "Microsoft YaHei", sans-serif;
+        body, html {
+            width: 100%;
+            height: 100%;
+            font-family: 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             overflow: hidden;
         }
-        
-        #map {
-            width: 100vw;
-            height: 100vh;
+        #container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.75);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            backdrop-filter: blur(6px);
+            pointer-events: none;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            border-left: 3px solid #ff6b3d;
+        }
+        .info-panel span {
+            color: #ff9a3c;
+            font-weight: bold;
+        }
+        @media (max-width: 600px) {
+            .info-panel {
+                top: 10px;
+                right: 10px;
+                font-size: 10px;
+                padding: 5px 10px;
+            }
+        }
+        /* 加载动画样式 */
+        .loading-overlay {
             position: absolute;
             top: 0;
             left: 0;
-        }
-        
-        .controls {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 15px 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            max-width: 280px;
-            border-left: 5px solid #e67e22;
-            backdrop-filter: blur(5px);
-            pointer-events: auto;
-        }
-        
-        .controls h2 {
-            margin: 0 0 5px 0;
-            color: #2c3e50;
-            font-size: 1.5rem;
-        }
-        
-        .total-stats {
-            background: #fff5e6;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            margin: 15px 0;
-            border: 1px solid #ffe0b2;
-        }
-        
-        .total-stats .number {
-            font-size: 2.2rem;
-            font-weight: bold;
-            color: #e67e22;
-            line-height: 1;
-        }
-        
-        .legend {
-            margin: 15px 0;
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 8px;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 0;
-            border-bottom: 1px dashed #ecf0f1;
-        }
-        
-        .legend-item:last-child {
-            border-bottom: none;
-        }
-        
-        .color-sample {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-        }
-        
-        .region-name {
-            flex: 1;
-            font-weight: 500;
-        }
-        
-        .street-count {
-            background: #ecf0f1;
-            padding: 2px 8px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-        }
-        
-        .btn-reset {
             width: 100%;
-            padding: 12px;
-            background: #e67e22;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: background 0.2s;
-            margin-top: 10px;
+            height: 100%;
+            background: #f2f6fc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            transition: opacity 0.4s ease;
+            flex-direction: column;
+            font-family: monospace;
         }
-        
-        .btn-reset:hover {
-            background: #d35400;
+        .loading-overlay.hide {
+            opacity: 0;
+            pointer-events: none;
         }
-        
-        .note {
-            font-size: 0.8rem;
-            color: #7f8c8d;
-            margin-top: 12px;
-            text-align: center;
-            font-style: italic;
+        .spinner {
+            width: 46px;
+            height: 46px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #1890ff;
+            border-radius: 50%;
+            animation: spin 0.8s infinite linear;
+            margin-bottom: 16px;
         }
-        
-        .info-window {
-            padding: 12px;
-            min-width: 200px;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-        
-        .info-window h4 {
-            margin: 0 0 8px 0;
-            padding-bottom: 5px;
-            border-bottom: 2px solid;
-            font-size: 1.1rem;
+        .loading-text {
+            color: #1e466e;
+            font-size: 14px;
+            background: rgba(255,255,255,0.7);
+            padding: 6px 14px;
+            border-radius: 40px;
+            backdrop-filter: blur(4px);
         }
-        
-        .region-badge {
-            display: inline-block;
+        .legend-note {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.55);
+            color: #eee;
             padding: 4px 12px;
             border-radius: 20px;
-            color: white;
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-        
-        .delivery-note {
-            background: #f0f7ff;
-            padding: 6px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            color: #3498db;
-            text-align: center;
-            margin-top: 8px;
+            font-size: 12px;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            font-size: 11px;
         }
     </style>
-    <!-- 高德地图JS API (使用您一直用的key) -->
-    <script src="https://webapi.amap.com/maps?v=2.0&key=3940c64072d3da572a07f7704d5174b7&plugin=AMap.Scale,AMap.ToolBar"></script>
+    <!-- 引入高德地图 JS API v2.0 ，使用用户提供的 key -->
+    <script type="text/javascript">
+        // 使用用户提供的key和安全密钥配置
+        window._AMapSecurityConfig = {
+            securityJsCode: 'b87aeb706c882950383bebf767cdaeac',   // 提供的 secret 作为安全密钥
+        };
+    </script>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=3940c64072d3da572a07f7704d5174b7&plugin=AMap.ToolBar,AMap.Scale,AMap.MouseTool"></script>
 </head>
 <body>
-    <div id="map"></div>
-    
-    <div class="controls">
-        <h2>🛵 市区免费配送</h2>
-        
-        <div class="total-stats">
-            <div class="number" id="totalCount">0</div>
-            <div class="label">有效配送点位</div>
-        </div>
-        
-        <div class="legend">
-            <div class="legend-item">
-                <div class="color-sample" style="background: #2ecc71;"></div>
-                <span class="region-name">南岸配送区</span>
-                <span class="street-count" id="countNanAn">0</span>
-            </div>
-            <div class="legend-item">
-                <div class="color-sample" style="background: #e74c3c;"></div>
-                <span class="region-name">老城区配送区</span>
-                <span class="street-count" id="countOld">0</span>
-            </div>
-            <div class="legend-item">
-                <div class="color-sample" style="background: #3498db;"></div>
-                <span class="region-name">上江北配送区</span>
-                <span class="street-count" id="countUp">0</span>
-            </div>
-            <div class="legend-item">
-                <div class="color-sample" style="background: #f39c12;"></div>
-                <span class="region-name">下江北配送区</span>
-                <span class="street-count" id="countDown">0</span>
-            </div>
-        </div>
-        
-        <button class="btn-reset" onclick="resetMap()">
-            📍 重置视图
-        </button>
-        
-        <div class="note">
-            * 基于您提供的高德API真实坐标<br>区域范围已按街道分布精确调整
-        </div>
-    </div>
+<div id="container"></div>
+<div class="info-panel">
+    📍 宜宾市·限定区域 | <span>手绘多边形范围</span> (41个界线点) | 视野限定区域
+</div>
+<div class="legend-note">
+    🟠 橙色边界内为宜宾市范围 | 点击地图可检测是否在区域内
+</div>
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">正在加载高德地图 & 绘制宜宾边界...</div>
+</div>
 
-    <script>
-        // ==================== 真实坐标数据（与之前完全一致）====================
-        const streetPoints = [
-            // 南岸区 (绿色)
-            { name: '溪口路', lng: 104.657621, lat: 28.757000, region: '南岸', color: '#2ecc71' },
-            { name: '三江路', lng: 104.651679, lat: 28.764624, region: '南岸', color: '#2ecc71' },
-            { name: '菜园沱路', lng: 104.655906, lat: 28.759386, region: '南岸', color: '#2ecc71' },
-            { name: '长江南路', lng: 104.672851, lat: 28.759448, region: '南岸', color: '#2ecc71' },
-            { name: '戎州路', lng: 104.639451, lat: 28.754745, region: '南岸', color: '#2ecc71' },
-            { name: '民康路', lng: 104.652339, lat: 28.755524, region: '南岸', color: '#2ecc71' },
-            { name: '槽房街', lng: 104.655770, lat: 28.753995, region: '南岸', color: '#2ecc71' },
-            { name: '利民路', lng: 104.655437, lat: 28.751409, region: '南岸', color: '#2ecc71' },
-            { name: '航天路', lng: 104.653800, lat: 28.752000, region: '南岸', color: '#2ecc71' },
-            { name: '华彩路', lng: 104.651000, lat: 28.754500, region: '南岸', color: '#2ecc71' },
-            { name: '英才路', lng: 104.549598, lat: 28.709498, region: '南岸', color: '#2ecc71' },
-            { name: '学园街', lng: 104.650308, lat: 28.763485, region: '南岸', color: '#2ecc71' },
-            { name: '民发街', lng: 104.648244, lat: 28.761411, region: '南岸', color: '#2ecc71' },
-            { name: '田坝街', lng: 104.648766, lat: 28.760894, region: '南岸', color: '#2ecc71' },
-            { name: '民营街', lng: 104.649919, lat: 28.760617, region: '南岸', color: '#2ecc71' },
-            { name: '新码头街', lng: 104.651088, lat: 28.762857, region: '南岸', color: '#2ecc71' },
-            { name: '马栈街', lng: 104.650943, lat: 28.752118, region: '南岸', color: '#2ecc71' },
-            { name: '酒都路', lng: 104.642189, lat: 28.760393, region: '南岸', color: '#2ecc71' },
-            { name: '商贸路', lng: 104.637242, lat: 28.752123, region: '南岸', color: '#2ecc71' },
-            { name: '文光路', lng: 104.653053, lat: 28.752149, region: '南岸', color: '#2ecc71' },
-            { name: '叙府路', lng: 104.638486, lat: 28.757407, region: '南岸', color: '#2ecc71' },
-            { name: '金发街', lng: 104.643856, lat: 28.758589, region: '南岸', color: '#2ecc71' },
-            { name: '天平街', lng: 104.644274, lat: 28.756337, region: '南岸', color: '#2ecc71' },
-            { name: '安达街', lng: 104.645802, lat: 28.756658, region: '南岸', color: '#2ecc71' },
-            { name: '民安街', lng: 104.648912, lat: 28.751427, region: '南岸', color: '#2ecc71' },
-            { name: '同盟路', lng: 104.647310, lat: 28.748997, region: '南岸', color: '#2ecc71' },
-            { name: '文博街', lng: 104.646917, lat: 28.750391, region: '南岸', color: '#2ecc71' },
-            { name: '绿茵路', lng: 104.644959, lat: 28.746571, region: '南岸', color: '#2ecc71' },
-            { name: '广场西路', lng: 104.643173, lat: 28.749731, region: '南岸', color: '#2ecc71' },
-            { name: '广场东路', lng: 104.645564, lat: 28.748745, region: '南岸', color: '#2ecc71' },
-            { name: '健身路', lng: 104.646472, lat: 28.748728, region: '南岸', color: '#2ecc71' },
-            { name: '展馆路', lng: 104.641398, lat: 28.749368, region: '南岸', color: '#2ecc71' },
-            { name: '迎宾街', lng: 104.643173, lat: 28.749731, region: '南岸', color: '#2ecc71' },
-            { name: '高峰路', lng: 104.641871, lat: 28.748065, region: '南岸', color: '#2ecc71' },
-            { name: '茶马路', lng: 104.621623, lat: 28.753842, region: '南岸', color: '#2ecc71' },
-            { name: '会馆路', lng: 104.640142, lat: 28.757929, region: '南岸', color: '#2ecc71' },
-            { name: '宜庆西街', lng: 104.638807, lat: 28.756367, region: '南岸', color: '#2ecc71' },
-            { name: '南坪巷', lng: 104.638158, lat: 28.757855, region: '南岸', color: '#2ecc71' },
-            { name: '建国路', lng: 104.638454, lat: 28.759126, region: '南岸', color: '#2ecc71' },
-            { name: '大坪街', lng: 104.636623, lat: 28.759494, region: '南岸', color: '#2ecc71' },
-            { name: '下渡口路', lng: 104.636723, lat: 28.762516, region: '南岸', color: '#2ecc71' },
-            { name: '黑塔路', lng: 104.637997, lat: 28.748248, region: '南岸', color: '#2ecc71' },
-            { name: '双院街', lng: 104.633183, lat: 28.752769, region: '南岸', color: '#2ecc71' },
-            { name: '金芽菜街', lng: 104.634927, lat: 28.751789, region: '南岸', color: '#2ecc71' },
-            { name: '安居里东街', lng: 104.636808, lat: 28.754062, region: '南岸', color: '#2ecc71' },
-            { name: '安居里南街', lng: 104.636213, lat: 28.754390, region: '南岸', color: '#2ecc71' },
-            { name: '矿泉街', lng: 104.635411, lat: 28.755069, region: '南岸', color: '#2ecc71' },
-            { name: '长乐巷', lng: 104.635948, lat: 28.761152, region: '南岸', color: '#2ecc71' },
-            { name: '明德路', lng: 104.634291, lat: 28.760900, region: '南岸', color: '#2ecc71' },
-            { name: '桅杆巷', lng: 104.633608, lat: 28.758699, region: '南岸', color: '#2ecc71' },
-            { name: '金鱼井街', lng: 104.633105, lat: 28.756706, region: '南岸', color: '#2ecc71' },
-            { name: '柑子园街', lng: 104.631803, lat: 28.758038, region: '南岸', color: '#2ecc71' },
-            { name: '新民巷', lng: 104.633947, lat: 28.755501, region: '南岸', color: '#2ecc71' },
-            { name: '祥发街', lng: 104.633928, lat: 28.755535, region: '南岸', color: '#2ecc71' },
-            { name: '南广路', lng: 104.635989, lat: 28.749934, region: '南岸', color: '#2ecc71' },
-            { name: '龙湾路', lng: 104.628172, lat: 28.752594, region: '南岸', color: '#2ecc71' },
-            { name: '裕民街', lng: 104.627802, lat: 28.753068, region: '南岸', color: '#2ecc71' },
-            { name: '古叙路', lng: 104.627942, lat: 28.754748, region: '南岸', color: '#2ecc71' },
-            { name: '路源街', lng: 104.629854, lat: 28.759450, region: '南岸', color: '#2ecc71' },
-            { name: '永兴街', lng: 104.627193, lat: 28.753219, region: '南岸', color: '#2ecc71' },
-            { name: '迎祥街', lng: 104.623901, lat: 28.751768, region: '南岸', color: '#2ecc71' },
-            { name: '平安街', lng: 104.626293, lat: 28.753621, region: '南岸', color: '#2ecc71' },
-            { name: '大房子街', lng: 104.624639, lat: 28.753130, region: '南岸', color: '#2ecc71' },
-            { name: '茶马街', lng: 104.621623, lat: 28.753842, region: '南岸', color: '#2ecc71' },
-            { name: '永福街', lng: 104.622909, lat: 28.751354, region: '南岸', color: '#2ecc71' },
-            { name: '柏杨路', lng: 104.619973, lat: 28.750295, region: '南岸', color: '#2ecc71' },
-            { name: '崇文路', lng: 104.624318, lat: 28.746904, region: '南岸', color: '#2ecc71' },
-            { name: '高坎子街', lng: 104.627140, lat: 28.748317, region: '南岸', color: '#2ecc71' },
-            { name: '五厢路', lng: 104.627973, lat: 28.748176, region: '南岸', color: '#2ecc71' },
-            { name: '外江路', lng: 104.606642, lat: 28.731426, region: '南岸', color: '#2ecc71' },
-            { name: '金沙江南路东段', lng: 104.611741, lat: 28.720802, region: '南岸', color: '#2ecc71' },
-            { name: '诚信路', lng: 104.629554, lat: 28.744218, region: '南岸', color: '#2ecc71' },
-            { name: '桂园路', lng: 104.620000, lat: 28.745000, region: '南岸', color: '#2ecc71' },
-            { name: '南丝绸路', lng: 104.633704, lat: 28.744812, region: '南岸', color: '#2ecc71' },
-            { name: '郑家坡街', lng: 104.634611, lat: 28.744432, region: '南岸', color: '#2ecc71' },
-            { name: '睦邻路', lng: 104.620928, lat: 28.742748, region: '南岸', color: '#2ecc71' },
-            { name: '藤荫街', lng: 104.625513, lat: 28.746164, region: '南岸', color: '#2ecc71' },
-            { name: '水竹林路', lng: 104.627427, lat: 28.742086, region: '南岸', color: '#2ecc71' },
-            { name: '清溪路', lng: 104.627340, lat: 28.739439, region: '南岸', color: '#2ecc71' },
-            { name: '朱家坡路', lng: 104.633961, lat: 28.741921, region: '南岸', color: '#2ecc71' },
-            { name: '树人路', lng: 104.619939, lat: 28.739336, region: '南岸', color: '#2ecc71' },
-            { name: '飘香街', lng: 104.612247, lat: 28.747109, region: '南岸', color: '#2ecc71' },
-            { name: '桥湾路', lng: 104.609164, lat: 28.743744, region: '南岸', color: '#2ecc71' },
-            { name: '望江路', lng: 104.609137, lat: 28.740549, region: '南岸', color: '#2ecc71' },
-            { name: '丽龙街', lng: 104.612253, lat: 28.745337, region: '南岸', color: '#2ecc71' },
-            { name: '庄子上路', lng: 104.615702, lat: 28.741963, region: '南岸', color: '#2ecc71' },
-            { name: '书房街', lng: 104.621826, lat: 28.740569, region: '南岸', color: '#2ecc71' },
-            { name: '永康路', lng: 104.610869, lat: 28.737796, region: '南岸', color: '#2ecc71' },
-            { name: '龙金庙街', lng: 104.615894, lat: 28.736099, region: '南岸', color: '#2ecc71' },
-            { name: '南六街', lng: 104.610735, lat: 28.726601, region: '南岸', color: '#2ecc71' },
-            { name: '康强街', lng: 104.620501, lat: 28.739046, region: '南岸', color: '#2ecc71' },
-            { name: '天璇路', lng: 104.617502, lat: 28.728439, region: '南岸', color: '#2ecc71' },
-            { name: '南四路', lng: 104.614589, lat: 28.733556, region: '南岸', color: '#2ecc71' },
-            { name: '狮子岩路', lng: 104.610230, lat: 28.733899, region: '南岸', color: '#2ecc71' },
-            { name: '黄金湾路', lng: 104.609424, lat: 28.736855, region: '南岸', color: '#2ecc71' },
-            { name: '南六路', lng: 104.604877, lat: 28.732366, region: '南岸', color: '#2ecc71' },
-            { name: '天宫山路', lng: 104.605216, lat: 28.725759, region: '南岸', color: '#2ecc71' },
-            { name: '樟海路', lng: 104.611266, lat: 28.721216, region: '南岸', color: '#2ecc71' },
-            { name: '南五街', lng: 104.605463, lat: 28.727171, region: '南岸', color: '#2ecc71' },
-
-            // 老城区 (红色)
-            { name: '东街', lng: 104.625374, lat: 28.766038, region: '老城区', color: '#e74c3c' },
-            { name: '中山街', lng: 104.624426, lat: 28.767747, region: '老城区', color: '#e74c3c' },
-            { name: '栈房街', lng: 104.627256, lat: 28.762571, region: '老城区', color: '#e74c3c' },
-            { name: '抗建路', lng: 104.627029, lat: 28.766346, region: '老城区', color: '#e74c3c' },
-            { name: '滨江路西段', lng: 104.624074, lat: 28.774035, region: '老城区', color: '#e74c3c' },
-            { name: '北正街', lng: 104.619846, lat: 28.771714, region: '老城区', color: '#e74c3c' },
-            { name: '长春街', lng: 104.621747, lat: 28.772541, region: '老城区', color: '#e74c3c' },
-            { name: '刘臣街', lng: 104.621517, lat: 28.770875, region: '老城区', color: '#e74c3c' },
-            { name: '东楼街', lng: 104.623458, lat: 28.771936, region: '老城区', color: '#e74c3c' },
-            { name: '上走马街', lng: 104.624887, lat: 28.760972, region: '老城区', color: '#e74c3c' },
-            { name: '集义街', lng: 104.623471, lat: 28.761018, region: '老城区', color: '#e74c3c' },
-            { name: '女学街', lng: 104.620009, lat: 28.759995, region: '老城区', color: '#e74c3c' },
-            { name: '清华街', lng: 104.622194, lat: 28.765438, region: '老城区', color: '#e74c3c' },
-            { name: '水井街', lng: 104.619107, lat: 28.766540, region: '老城区', color: '#e74c3c' },
-            { name: '忠孝街', lng: 104.620297, lat: 28.769013, region: '老城区', color: '#e74c3c' },
-            { name: '北较场街', lng: 104.619853, lat: 28.766537, region: '老城区', color: '#e74c3c' },
-            { name: '小碑巷', lng: 104.624699, lat: 28.769818, region: '老城区', color: '#e74c3c' },
-            { name: '大碑巷', lng: 104.624004, lat: 28.769543, region: '老城区', color: '#e74c3c' },
-            { name: '小北街', lng: 104.627341, lat: 28.768203, region: '老城区', color: '#e74c3c' },
-            { name: '中心路', lng: 104.625835, lat: 28.767197, region: '老城区', color: '#e74c3c' },
-            { name: '青年街', lng: 104.626264, lat: 28.763967, region: '老城区', color: '#e74c3c' },
-            { name: '文重街', lng: 104.626753, lat: 28.764835, region: '老城区', color: '#e74c3c' },
-            { name: '大南街', lng: 104.629447, lat: 28.765114, region: '老城区', color: '#e74c3c' },
-            { name: '洞天街', lng: 104.625083, lat: 28.765418, region: '老城区', color: '#e74c3c' },
-            { name: '西街', lng: 104.621655, lat: 28.764197, region: '老城区', color: '#e74c3c' },
-            { name: '仁和街', lng: 104.620057, lat: 28.764458, region: '老城区', color: '#e74c3c' },
-            { name: '慈善街', lng: 104.617123, lat: 28.761160, region: '老城区', color: '#e74c3c' },
-            { name: '光复街', lng: 104.628682, lat: 28.763830, region: '老城区', color: '#e74c3c' },
-            { name: '专署街', lng: 104.628921, lat: 28.770476, region: '老城区', color: '#e74c3c' },
-            { name: '仁爱街', lng: 104.616435, lat: 28.760355, region: '老城区', color: '#e74c3c' },
-            { name: '建设路', lng: 104.617725, lat: 28.758154, region: '老城区', color: '#e74c3c' },
-            { name: '文星街', lng: 104.617123, lat: 28.761160, region: '老城区', color: '#e74c3c' },
-            { name: '人民路', lng: 104.619830, lat: 28.765479, region: '老城区', color: '#e74c3c' },
-            { name: '人民广场东路', lng: 104.626024, lat: 28.765870, region: '老城区', color: '#e74c3c' },
-            { name: '前进路', lng: 104.602034, lat: 28.751896, region: '老城区', color: '#e74c3c' },
-            { name: '金沙江北路东段', lng: 104.586743, lat: 28.736987, region: '老城区', color: '#e74c3c' },
-            { name: '新中路', lng: 104.595748, lat: 28.745166, region: '老城区', color: '#e74c3c' },
-            { name: '苗圃路', lng: 104.586743, lat: 28.736987, region: '老城区', color: '#e74c3c' },
-            { name: '较场路', lng: 104.619853, lat: 28.766537, region: '老城区', color: '#e74c3c' },
-            { name: '书苑路', lng: 104.619853, lat: 28.766537, region: '老城区', color: '#e74c3c' },
-            { name: '青皮树街', lng: 104.618746, lat: 28.763909, region: '老城区', color: '#e74c3c' },
-            { name: '东浩街', lng: 104.623817, lat: 28.771685, region: '老城区', color: '#e74c3c' },
-            { name: '都长街', lng: 104.626116, lat: 28.770426, region: '老城区', color: '#e74c3c' },
-            { name: '咸熙街', lng: 104.625814, lat: 28.770981, region: '老城区', color: '#e74c3c' },
-            { name: '拱星街', lng: 104.624546, lat: 28.772765, region: '老城区', color: '#e74c3c' },
-            { name: '匡时街', lng: 104.629047, lat: 28.769454, region: '老城区', color: '#e74c3c' },
-            { name: '衣服街', lng: 104.628597, lat: 28.769161, region: '老城区', color: '#e74c3c' },
-            { name: '复兴街', lng: 104.629047, lat: 28.769454, region: '老城区', color: '#e74c3c' },
-            { name: '交通街', lng: 104.629620, lat: 28.769770, region: '老城区', color: '#e74c3c' },
-            { name: '县府路', lng: 104.629553, lat: 28.767721, region: '老城区', color: '#e74c3c' },
-            { name: '正气巷', lng: 104.622008, lat: 28.767805, region: '老城区', color: '#e74c3c' },
-
-            // 上江北 (蓝色)
-            { name: '岷江北滨路', lng: 104.607638, lat: 28.777721, region: '上江北', color: '#3498db' },
-            { name: '锁江路', lng: 104.615788, lat: 28.776470, region: '上江北', color: '#3498db' },
-            { name: '岷江东路', lng: 104.617967, lat: 28.778422, region: '上江北', color: '#3498db' },
-            { name: '岷江西路', lng: 104.614776, lat: 28.778636, region: '上江北', color: '#3498db' },
-            { name: '月耳池街', lng: 104.611172, lat: 28.782918, region: '上江北', color: '#3498db' },
-            { name: '五粮液路', lng: 104.606852, lat: 28.782936, region: '上江北', color: '#3498db' },
-            { name: '新街', lng: 104.612639, lat: 28.786048, region: '上江北', color: '#3498db' },
-            { name: '古塔路', lng: 104.599259, lat: 28.797316, region: '上江北', color: '#3498db' },
-            { name: '金鹰街', lng: 104.602095, lat: 28.786461, region: '上江北', color: '#3498db' },
-            { name: '旧州路', lng: 104.605520, lat: 28.789584, region: '上江北', color: '#3498db' },
-            { name: '农机厂街', lng: 104.604039, lat: 28.786775, region: '上江北', color: '#3498db' },
-            { name: '敬业路', lng: 104.610199, lat: 28.789282, region: '上江北', color: '#3498db' },
-            { name: '文化街', lng: 104.609925, lat: 28.788834, region: '上江北', color: '#3498db' },
-            { name: '红丰东路', lng: 104.609588, lat: 28.790678, region: '上江北', color: '#3498db' },
-            { name: '广厦东路', lng: 104.607357, lat: 28.788718, region: '上江北', color: '#3498db' },
-            { name: '广发巷', lng: 104.607347, lat: 28.787120, region: '上江北', color: '#3498db' },
-            { name: '广厦西路', lng: 104.603820, lat: 28.790461, region: '上江北', color: '#3498db' },
-            { name: '安康街', lng: 104.605515, lat: 28.790716, region: '上江北', color: '#3498db' },
-            { name: '创新路', lng: 104.605283, lat: 28.792771, region: '上江北', color: '#3498db' },
-            { name: '红丰西路', lng: 104.604430, lat: 28.792909, region: '上江北', color: '#3498db' },
-            { name: '外环路', lng: 104.601549, lat: 28.794496, region: '上江北', color: '#3498db' },
-            { name: '碾子山路', lng: 104.600555, lat: 28.791169, region: '上江北', color: '#3498db' },
-            { name: '红霞路', lng: 104.600440, lat: 28.792553, region: '上江北', color: '#3498db' },
-            { name: '青云路', lng: 104.602415, lat: 28.794119, region: '上江北', color: '#3498db' },
-            { name: '铁肩街', lng: 104.604446, lat: 28.794535, region: '上江北', color: '#3498db' },
-            { name: '致富路', lng: 104.604446, lat: 28.794535, region: '上江北', color: '#3498db' },
-            { name: '新建东路', lng: 104.604529, lat: 28.796052, region: '上江北', color: '#3498db' },
-            { name: '学院路', lng: 104.620905, lat: 28.806056, region: '上江北', color: '#3498db' },
-            { name: '支九路', lng: 104.609859, lat: 28.795627, region: '上江北', color: '#3498db' },
-            { name: '振兴路', lng: 104.597185, lat: 28.804859, region: '上江北', color: '#3498db' },
-            { name: '高发路', lng: 104.607129, lat: 28.798173, region: '上江北', color: '#3498db' },
-            { name: '丹山路', lng: 104.604529, lat: 28.796052, region: '上江北', color: '#3498db' },
-            { name: '顺达街', lng: 104.604038, lat: 28.798908, region: '上江北', color: '#3498db' },
-            { name: '致远路', lng: 104.600918, lat: 28.794531, region: '上江北', color: '#3498db' },
-            { name: '红坝路', lng: 104.612013, lat: 28.813247, region: '上江北', color: '#3498db' },
-            { name: '兴盛路', lng: 104.612135, lat: 28.805446, region: '上江北', color: '#3498db' },
-            { name: '龙泉街', lng: 104.611119, lat: 28.798968, region: '上江北', color: '#3498db' },
-            { name: '翠微路', lng: 104.619382, lat: 28.809682, region: '上江北', color: '#3498db' },
-            { name: '恒通街', lng: 104.611606, lat: 28.801995, region: '上江北', color: '#3498db' },
-            { name: '菱角街', lng: 104.614554, lat: 28.803680, region: '上江北', color: '#3498db' },
-            { name: '盛达街', lng: 104.616423, lat: 28.806096, region: '上江北', color: '#3498db' },
-            { name: '汇远街', lng: 104.609330, lat: 28.809406, region: '上江北', color: '#3498db' },
-            { name: '纵四路', lng: 104.605918, lat: 28.809470, region: '上江北', color: '#3498db' },
-            { name: '金盾街', lng: 104.622718, lat: 28.805278, region: '上江北', color: '#3498db' },
-            { name: '金台街', lng: 104.622575, lat: 28.807140, region: '上江北', color: '#3498db' },
-            { name: '东山路', lng: 104.623476, lat: 28.803877, region: '上江北', color: '#3498db' },
-            { name: '弘博路', lng: 104.627179, lat: 28.813962, region: '上江北', color: '#3498db' },
-            { name: '弘博街', lng: 104.623613, lat: 28.816281, region: '上江北', color: '#3498db' },
-            { name: '广坪路', lng: 104.629993, lat: 28.819588, region: '上江北', color: '#3498db' },
-            { name: '梁雁街', lng: 104.615801, lat: 28.816576, region: '上江北', color: '#3498db' },
-            { name: '岷江北路', lng: 104.628688, lat: 28.803923, region: '上江北', color: '#3498db' },
-
-            // 下江北 (橙色)
-            { name: '志诚路', lng: 104.755430, lat: 28.801322, region: '下江北', color: '#f39c12' },
-            { name: '港城大道', lng: 104.760450, lat: 28.818487, region: '下江北', color: '#f39c12' },
-            { name: '港城路', lng: 104.760450, lat: 28.818487, region: '下江北', color: '#f39c12' },
-            { name: '僰侯庙路', lng: 104.655707, lat: 28.771513, region: '下江北', color: '#f39c12' },
-            { name: '环长江景观大道', lng: 104.685696, lat: 28.775475, region: '下江北', color: '#f39c12' },
-            { name: '红星路', lng: 104.656216, lat: 28.771284, region: '下江北', color: '#f39c12' },
-            { name: '黄角坪路', lng: 104.665362, lat: 28.782008, region: '下江北', color: '#f39c12' },
-            { name: '中元路', lng: 104.661149, lat: 28.767326, region: '下江北', color: '#f39c12' },
-            { name: '马鞍路', lng: 104.663757, lat: 28.771151, region: '下江北', color: '#f39c12' },
-            { name: '学堂路', lng: 104.662086, lat: 28.775692, region: '下江北', color: '#f39c12' },
-            { name: '池口街', lng: 104.660839, lat: 28.778876, region: '下江北', color: '#f39c12' },
-            { name: '池塘街', lng: 104.662645, lat: 28.779030, region: '下江北', color: '#f39c12' },
-            { name: '学社路', lng: 104.794233, lat: 28.799099, region: '下江北', color: '#f39c12' },
-            { name: '农盛路', lng: 104.665879, lat: 28.781339, region: '下江北', color: '#f39c12' },
-            { name: '白塔路', lng: 104.671482, lat: 28.799409, region: '下江北', color: '#f39c12' },
-            { name: '光明路', lng: 104.672697, lat: 28.781078, region: '下江北', color: '#f39c12' },
-            { name: '希望路', lng: 104.660175, lat: 28.774665, region: '下江北', color: '#f39c12' },
-            { name: '洗马池路', lng: 104.663876, lat: 28.778478, region: '下江北', color: '#f39c12' },
-            { name: '化工路', lng: 104.668984, lat: 28.783889, region: '下江北', color: '#f39c12' },
-            { name: '长江路西段', lng: 104.672951, lat: 28.780733, region: '下江北', color: '#f39c12' },
-            { name: '长江路北段', lng: 104.672951, lat: 28.780733, region: '下江北', color: '#f39c12' },
-            { name: '经十九路', lng: 104.753112, lat: 28.817401, region: '下江北', color: '#f39c12' },
-            { name: '大学路', lng: 104.681762, lat: 28.811916, region: '下江北', color: '#f39c12' },
-            { name: '飞云路', lng: 104.662858, lat: 28.794068, region: '下江北', color: '#f39c12' },
-            { name: '构庄路', lng: 104.672962, lat: 28.795351, region: '下江北', color: '#f39c12' },
-            { name: '李湾路', lng: 104.667105, lat: 28.793553, region: '下江北', color: '#f39c12' },
-            { name: '新楼路', lng: 104.674892, lat: 28.793951, region: '下江北', color: '#f39c12' },
-            { name: '长翠路', lng: 104.681080, lat: 28.791902, region: '下江北', color: '#f39c12' },
-            { name: '石岗路', lng: 104.674100, lat: 28.794592, region: '下江北', color: '#f39c12' },
-            { name: '赵坝路', lng: 104.676342, lat: 28.795747, region: '下江北', color: '#f39c12' },
-            { name: '峥嵘路', lng: 104.688952, lat: 28.810309, region: '下江北', color: '#f39c12' },
-            { name: '护国路', lng: 104.677992, lat: 28.790574, region: '下江北', color: '#f39c12' },
-            { name: '龙头山路', lng: 104.686408, lat: 28.792231, region: '下江北', color: '#f39c12' },
-            { name: '沙坪路', lng: 104.693272, lat: 28.793406, region: '下江北', color: '#f39c12' },
-            { name: '塘湾路', lng: 104.688613, lat: 28.788532, region: '下江北', color: '#f39c12' },
-            { name: '泰兴街', lng: 104.690283, lat: 28.792848, region: '下江北', color: '#f39c12' },
-            { name: '水井湾路', lng: 104.694530, lat: 28.790574, region: '下江北', color: '#f39c12' },
-            { name: '长江北路', lng: 104.672951, lat: 28.780733, region: '下江北', color: '#f39c12' },
-            { name: '梨湾路', lng: 104.698066, lat: 28.794773, region: '下江北', color: '#f39c12' },
-            { name: '龙兴路', lng: 104.689742, lat: 28.815692, region: '下江北', color: '#f39c12' },
-            { name: '牌坊路', lng: 104.712468, lat: 28.803067, region: '下江北', color: '#f39c12' },
-            { name: '新田湾路', lng: 104.718908, lat: 28.807554, region: '下江北', color: '#f39c12' },
-            { name: '嘉信路', lng: 104.729331, lat: 28.805690, region: '下江北', color: '#f39c12' },
-            { name: '磅礴路', lng: 104.745338, lat: 28.806712, region: '下江北', color: '#f39c12' },
-            { name: '广进路', lng: 104.740206, lat: 28.814134, region: '下江北', color: '#f39c12' }
+<script>
+    (function() {
+        // ---------- 宜宾范围边界点数据（严格按照提供的顺序 1~41）----------
+        const yibinBoundaryPointsRaw = [
+            [104.809825, 28.842146], // 1
+            [104.811579, 28.816707], // 2
+            [104.766366, 28.784601], // 3
+            [104.732846, 28.775462], // 4
+            [104.710434, 28.788700], // 5
+            [104.686951, 28.775548], // 6
+            [104.661810, 28.753595], // 7
+            [104.634819, 28.731723], // 8
+            [104.621469, 28.714718], // 9
+            [104.582882, 28.735141], // 10
+            [104.604672, 28.755733], // 11
+            [104.596055, 28.756211], // 12
+            [104.598579, 28.764017], // 13
+            [104.598409, 28.767306], // 14
+            [104.592746, 28.772061], // 15
+            [104.595031, 28.778101], // 16
+            [104.598716, 28.782108], // 17
+            [104.590255, 28.790420], // 18
+            [104.578656, 28.807939], // 19
+            [104.583159, 28.811108], // 20
+            [104.584626, 28.810869], // 21
+            [104.590085, 28.812124], // 22
+            [104.619568, 28.827577], // 23
+            [104.635035, 28.820552], // 24
+            [104.638173, 28.816625], // 25
+            [104.634138, 28.808489], // 26
+            [104.652837, 28.792215], // 27
+            [104.653926, 28.794516], // 28
+            [104.657192, 28.798613], // 29
+            [104.696766, 28.828126], // 30
+            [104.701697, 28.834802], // 31
+            [104.715721, 28.832165], // 32
+            [104.681269, 28.804000], // 33
+            [104.689402, 28.796088], // 34
+            [104.695998, 28.797883], // 35
+            [104.709958, 28.805683], // 36
+            [104.734356, 28.816681], // 37
+            [104.742745, 28.819767], // 38
+            [104.749789, 28.819374], // 39
+            [104.770152, 28.832838], // 40
+            [104.779692, 28.840862]  // 41
         ];
 
-        // 更新统计
-        let total = streetPoints.length;
-        let nanan = streetPoints.filter(p => p.region === '南岸').length;
-        let old = streetPoints.filter(p => p.region === '老城区').length;
-        let up = streetPoints.filter(p => p.region === '上江北').length;
-        let down = streetPoints.filter(p => p.region === '下江北').length;
+        // 验证坐标有效性
+        function validateCoords(coords) {
+            return coords.every(coord => 
+                Array.isArray(coord) && coord.length === 2 && 
+                typeof coord[0] === 'number' && !isNaN(coord[0]) && 
+                typeof coord[1] === 'number' && !isNaN(coord[1]) &&
+                coord[0] > 73 && coord[0] < 136 && coord[1] > 10 && coord[1] < 56
+            );
+        }
+        if (!validateCoords(yibinBoundaryPointsRaw)) {
+            console.warn("坐标数据异常，请检查经度/纬度范围");
+        }
+
+        // 计算多边形中心
+        function calculateCenter(points) {
+            let sumLng = 0, sumLat = 0;
+            for (let p of points) {
+                sumLng += p[0];
+                sumLat += p[1];
+            }
+            return [sumLng / points.length, sumLat / points.length];
+        }
+
+        const centerPoint = calculateCenter(yibinBoundaryPointsRaw);
+        // 计算边界范围（用于自适应视野和拖拽限制）
+        const lngs = yibinBoundaryPointsRaw.map(p => p[0]);
+        const lats = yibinBoundaryPointsRaw.map(p => p[1]);
+        const minLng = Math.min(...lngs);
+        const maxLng = Math.max(...lngs);
+        const minLat = Math.min(...lats);
+        const maxLat = Math.max(...lats);
+        const bounds = new AMap.Bounds([minLng, minLat], [maxLng, maxLat]);
         
-        document.getElementById('totalCount').innerText = total;
-        document.getElementById('countNanAn').innerText = nanan;
-        document.getElementById('countOld').innerText = old;
-        document.getElementById('countUp').innerText = up;
-        document.getElementById('countDown').innerText = down;
-
-        // ==================== 初始化地图 ====================
+        // 扩展边界限制（防止拖拽时过分偏离宜宾区域，实现“区域只在宜宾市范围”的交互效果）
+        const extendedBounds = new AMap.Bounds(
+            [minLng - 0.2, minLat - 0.2],
+            [maxLng + 0.2, maxLat + 0.2]
+        );
+        
         let map = null;
-        let markers = [];
-        let infoWindow = null;
-
-        window.onload = function() {
-            map = new AMap.Map('map', {
-                center: [104.641, 28.768],
-                zoom: 12,
+        let mainPolygon = null;
+        
+        // 射线法判断点是否在多边形内 (用于点击交互)
+        function isPointInPolygon(point, polygonPoints) {
+            let x = point[0], y = point[1];
+            let inside = false;
+            for (let i = 0, j = polygonPoints.length - 1; i < polygonPoints.length; j = i++) {
+                let xi = polygonPoints[i][0], yi = polygonPoints[i][1];
+                let xj = polygonPoints[j][0], yj = polygonPoints[j][1];
+                let intersect = ((yi > y) !== (yj > y)) &&
+                    (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+        
+        // 初始化高德地图
+        function initMap() {
+            map = new AMap.Map('container', {
+                center: centerPoint,
+                zoom: 11,
                 viewMode: '2D',
-                zooms: [11, 18]
+                resizeEnable: true,
+                showIndoorMap: false,
+                pitch: 0,
+                rotation: 0,
+                expandZoomRange: true,
+                zooms: [9, 17],
+                // 限制地图拖拽范围，确保用户无法完全移出宜宾附近区域，强化区域限定感
+                limitBounds: extendedBounds
             });
-
+            
+            // 添加工具条和比例尺
+            map.addControl(new AMap.ToolBar({ position: 'RT', offset: new AMap.Pixel(10, 10) }));
             map.addControl(new AMap.Scale({ position: 'LB' }));
-            map.addControl(new AMap.ToolBar({ position: 'RT' }));
             
-            infoWindow = new AMap.InfoWindow({
-                offset: new AMap.Pixel(0, -25),
-                closeWhenClickMap: true
-            });
-
-            // 绘制区域轮廓 - 根据用户要求调整
-            drawRegionBoundaries();
+            // 设置视野完全包含多边形，并加入内边距使得多边形不贴边（美观）
+            map.setBounds(bounds, false, [40, 40, 40, 40]);
             
-            // 显示所有点
-            showAllPoints();
+            // ---------- 绘制重点：宜宾市手绘区域多边形 ----------
+            const polygon = new AMap.Polygon({
+                path: yibinBoundaryPointsRaw,
+                strokeColor: '#FF6B3D',      // 醒目的橙红色边框
+                strokeWeight: 3.5,
+                strokeOpacity: 1,
+                fillColor: '#3c8cff',         // 清新蓝色填充
+                fillOpacity: 0.28,
+                zIndex: 10,
+                bubble: true,
+                strokeStyle: 'solid',
+                strokeLinejoin: 'round',
+                strokeLinecap: 'round'
+            });
             
-            // 添加长江示意
-            addRiver();
-        };
-
-        // 修改后的区域范围，南岸右下角往左上移，下江北右下角往左上移
-        function drawRegionBoundaries() {
-            // 南岸范围：原右下角 (104.675,28.720) → 新右下角 (104.670,28.725)
-            new AMap.Polygon({
-                map: map,
-                path: [
-                    [104.605, 28.720],  // 左下
-                    [104.670, 28.720],  // 右下 (经度减小，纬度不变？用户要求右下角往左上，所以经度减小、纬度增加)
-                    [104.670, 28.770],  // 右上
-                    [104.605, 28.770],  // 左上
-                    [104.605, 28.720]
-                ],
-                strokeColor: '#2ecc71',
-                strokeWeight: 3,
-                strokeOpacity: 0.6,
-                fillColor: '#2ecc71',
-                fillOpacity: 0.15
+            map.add(polygon);
+            mainPolygon = polygon;
+            
+            // 增加提示区域中心的文字标记（简单信息牌）
+            const centerLabelMarker = new AMap.Marker({
+                position: centerPoint,
+                content: `<div style="background: rgba(0,0,0,0.65); color: #ffd966; padding: 4px 12px; border-radius: 24px; font-size: 13px; font-weight: 600; backdrop-filter: blur(4px); border: 1px solid #ffaa44; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🏔️ 宜宾 · 限定区域</div>`,
+                offset: new AMap.Pixel(0, -18),
+                zIndex: 8,
+                anchor: 'bottom-center'
             });
-
-            // 老城区范围（不变）
-            new AMap.Polygon({
-                map: map,
-                path: [
-                    [104.585, 28.750],
-                    [104.640, 28.750],
-                    [104.640, 28.785],
-                    [104.585, 28.785],
-                    [104.585, 28.750]
-                ],
-                strokeColor: '#e74c3c',
-                strokeWeight: 3,
-                strokeOpacity: 0.6,
-                fillColor: '#e74c3c',
-                fillOpacity: 0.15
-            });
-
-            // 上江北范围（不变）
-            new AMap.Polygon({
-                map: map,
-                path: [
-                    [104.595, 28.770],
-                    [104.660, 28.770],
-                    [104.660, 28.825],
-                    [104.595, 28.825],
-                    [104.595, 28.770]
-                ],
-                strokeColor: '#3498db',
-                strokeWeight: 3,
-                strokeOpacity: 0.6,
-                fillColor: '#3498db',
-                fillOpacity: 0.15
-            });
-
-            // 下江北范围：原右下角 (104.760,28.750) → 新右下角 (104.755,28.755)
-            new AMap.Polygon({
-                map: map,
-                path: [
-                    [104.650, 28.750],  // 左下
-                    [104.755, 28.750],  // 右下 (经度减小)
-                    [104.755, 28.830],  // 右上 (纬度可调，但用户只要求右下角往左上，我们保持上边界不变？实际上右上角也会相应移动)
-                    [104.650, 28.830],  // 左上
-                    [104.650, 28.750]
-                ],
-                strokeColor: '#f39c12',
-                strokeWeight: 3,
-                strokeOpacity: 0.6,
-                fillColor: '#f39c12',
-                fillOpacity: 0.15
-            });
-        }
-
-        function showAllPoints() {
-            streetPoints.forEach(point => {
-                const markerContent = document.createElement('div');
-                markerContent.style.width = '8px';
-                markerContent.style.height = '8px';
-                markerContent.style.backgroundColor = point.color;
-                markerContent.style.borderRadius = '50%';
-                markerContent.style.border = '2px solid white';
-                markerContent.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
-                markerContent.style.cursor = 'pointer';
-                
+            map.add(centerLabelMarker);
+            
+            // 显示全部41个边界顶点（带序号小标记，增强可视化区域边界）
+            yibinBoundaryPointsRaw.forEach((point, idx) => {
+                // 使用自定义轻量圆形标记，并显示序号
+                const markerContent = `
+                    <div style="position: relative; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">
+                        <div style="width: 18px; height: 18px; background-color: #ff6b3d; border-radius: 50%; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; color: white;">${idx+1}</div>
+                    </div>
+                `;
                 const marker = new AMap.Marker({
-                    position: [point.lng, point.lat],
+                    position: point,
                     content: markerContent,
-                    map: map,
-                    title: point.name
+                    offset: new AMap.Pixel(-9, -9),
+                    zIndex: 12,
+                    anchor: 'center',
+                    extData: { index: idx+1 }
                 });
-                
-                marker.on('click', () => {
-                    infoWindow.setContent(`
-                        <div class="info-window">
-                            <h4 style="color: ${point.color}">📍 ${point.name}</h4>
-                            <span class="region-badge" style="background: ${point.color}">
-                                ${point.region}配送区
-                            </span>
-                            <div class="delivery-note">
-                                🛵 免费配送点位
-                            </div>
-                        </div>
-                    `);
-                    infoWindow.open(map, [point.lng, point.lat]);
+                // 添加鼠标悬浮显示坐标信息
+                marker.on('mouseover', function(e) {
+                    marker.setLabel({
+                        content: `点${idx+1}: (${point[0].toFixed(5)}, ${point[1].toFixed(5)})`,
+                        direction: 'top',
+                        offset: new AMap.Pixel(0, -10),
+                        style: {
+                            fontSize: '10px',
+                            background: '#333',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '12px',
+                            padding: '2px 8px',
+                            whiteSpace: 'nowrap'
+                        }
+                    });
                 });
-                
-                markers.push(marker);
+                marker.on('mouseout', function() {
+                    marker.setLabel(null);
+                });
+                map.add(marker);
+            });
+            
+            // 添加多边形交互：悬浮高亮效果
+            polygon.on('mouseover', function() {
+                polygon.setOptions({
+                    fillOpacity: 0.5,
+                    strokeColor: '#FF3300',
+                    strokeWeight: 4.5
+                });
+            });
+            polygon.on('mouseout', function() {
+                polygon.setOptions({
+                    fillOpacity: 0.28,
+                    strokeColor: '#FF6B3D',
+                    strokeWeight: 3.5
+                });
+            });
+            
+            // 点击地图判断是否在宜宾限定区域内，并弹窗反馈
+            map.on('click', function(e) {
+                const lnglat = e.lnglat;
+                const clickPoint = [lnglat.getLng(), lnglat.getLat()];
+                const inside = isPointInPolygon(clickPoint, yibinBoundaryPointsRaw);
+                // 创建信息窗口显示
+                let infoContent = '';
+                if (inside) {
+                    infoContent = `<div style="padding: 8px 14px; background: #1e2a3a; color: #b9f6ca; border-radius: 12px; font-size: 13px; font-weight: 500; box-shadow: 0 3px 8px rgba(0,0,0,0.2); border-left: 3px solid #2ecc71;"><span style="color:#2ecc71;">✓ 宜宾范围内</span><br/>坐标: ${clickPoint[0].toFixed(5)}, ${clickPoint[1].toFixed(5)}</div>`;
+                } else {
+                    infoContent = `<div style="padding: 8px 14px; background: #2c1e1a; color: #ffb7a0; border-radius: 12px; font-size: 13px; font-weight: 500; box-shadow: 0 3px 8px rgba(0,0,0,0.2); border-left: 3px solid #e67e22;"><span style="color:#ff9f4a;">✗ 超出宜宾限定区域</span><br/>坐标: ${clickPoint[0].toFixed(5)}, ${clickPoint[1].toFixed(5)}</div>`;
+                }
+                // 创建临时信息窗，3秒后关闭
+                const infoWindow = new AMap.InfoWindow({
+                    content: infoContent,
+                    offset: new AMap.Pixel(0, -30),
+                    autoMove: true,
+                    closeWhenClickMap: true
+                });
+                infoWindow.open(map, lnglat);
+                // 自动关闭延时
+                setTimeout(() => {
+                    infoWindow.close();
+                }, 2500);
+            });
+            
+            // 可选：加载完成加上简单的图例说明与移除loading动画
+            const loadingEl = document.getElementById('loadingOverlay');
+            if (loadingEl) {
+                setTimeout(() => {
+                    loadingEl.classList.add('hide');
+                    setTimeout(() => {
+                        if (loadingEl.parentNode) loadingEl.style.display = 'none';
+                    }, 400);
+                }, 500);
+            }
+            
+            // 增加额外的一个边界警告效果：当地图拖拽超出区域边界时，轻微提示（不强制复位，因为设置了limitBounds）
+            // 监听bounds改变事件，如果边界靠近限制边缘不做侵入提示，但已有限制就足够。
+            console.log('地图初始化完成，宜宾区域多边形已加载，共41个顶点');
+        }
+        
+        // 处理加载失败情况（网络或者key问题）
+        function handleMapLoadError() {
+            const loadingDiv = document.getElementById('loadingOverlay');
+            if (loadingDiv) {
+                loadingDiv.innerHTML = `
+                    <div style="background: rgba(0,0,0,0.85); color: #ffcaca; padding: 24px 28px; border-radius: 24px; text-align: center; max-width: 80%; backdrop-filter: blur(8px);">
+                        <div style="font-size: 28px; margin-bottom: 12px;">🗺️⚠️</div>
+                        <div style="font-weight: bold; margin-bottom: 8px;">地图加载失败</div>
+                        <div style="font-size: 13px;">请检查API Key与网络连接，确保高德密钥有效且已配置安全密钥。<br>当前使用的Key: 3940c64072d3da572a07f7704d5174b7</div>
+                        <button onclick="location.reload()" style="margin-top: 18px; background: #ff6b3d; border: none; padding: 6px 16px; border-radius: 30px; color: white; cursor: pointer;">刷新重试</button>
+                    </div>
+                `;
+                loadingDiv.classList.remove('hide');
+            }
+        }
+        
+        // 检测高德地图API是否加载成功，若超时则提示
+        let isMapInitCalled = false;
+        window.initAmap = function() {
+            if (!isMapInitCalled && window.AMap && window.AMap.Map) {
+                isMapInitCalled = true;
+                initMap();
+            }
+        };
+        
+        // 加载监听
+        if (window.AMap && window.AMap.Map) {
+            initMap();
+        } else {
+            // 等待脚本加载完成
+            window.addEventListener('load', function() {
+                if (window.AMap && window.AMap.Map) {
+                    initMap();
+                } else {
+                    // 延迟等待，再试一次
+                    setTimeout(() => {
+                        if (window.AMap && window.AMap.Map) {
+                            initMap();
+                        } else {
+                            handleMapLoadError();
+                        }
+                    }, 1500);
+                }
             });
         }
-
-        function addRiver() {
-            new AMap.Polyline({
-                path: [
-                    [104.600, 28.775],
-                    [104.620, 28.773],
-                    [104.638, 28.770],
-                    [104.660, 28.767],
-                    [104.680, 28.764]
-                ],
-                strokeColor: '#3498db',
-                strokeWeight: 3,
-                strokeOpacity: 0.3,
-                map: map
-            });
+        
+        // 监听script加载错误（网络等）
+        const amapScript = document.querySelector('script[src*="webapi.amap.com/maps"]');
+        if (amapScript) {
+            amapScript.onerror = function() {
+                handleMapLoadError();
+            };
         }
-
-        function resetMap() {
-            if (map) map.setZoomAndCenter(12, [104.641, 28.768], true);
-        }
-    </script>
+        
+        // 导出全局测试（便于调试，非必要）
+        window.checkPointInYibin = function(lng, lat) {
+            if (!mainPolygon) return false;
+            return isPointInPolygon([lng, lat], yibinBoundaryPointsRaw);
+        };
+    })();
+</script>
 </body>
 </html>
